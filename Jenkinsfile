@@ -28,23 +28,28 @@ pipeline {
 
     stage('Install Node & Test') {
       steps {
-        // Use Node via docker temporarily to keep controller clean
-        sh '''
-          docker run --rm -v "$PWD":/ws -w /ws node:18-bullseye bash -lc "
-            corepack enable || true
-            npm --version
-            npm ci
-            npm test -- --coverage
-          "
-        '''
-      }
-      post {
-        always {
-          junit 'reports/junit.xml'
-          archiveArtifacts artifacts: 'coverage/**', onlyIfSuccessful: false
+        script {
+          def ws = pwd()   // get full workspace path safely
+          sh """
+            docker run --rm \
+              -v '${ws}:/ws' -w /ws \
+              node:18-bullseye bash -lc '
+                set -e
+                corepack enable || true
+                npm --version
+                npm ci
+                npm test -- --coverage
+              '
+           """
         }
-      }
+  }
+  post {
+    always {
+      junit '**/junit.xml'        // or adjust if jest writes somewhere else
+      archiveArtifacts artifacts: 'coverage/**', onlyIfSuccessful: false
     }
+  }
+}
 
     stage('SonarQube Scan') {
       steps {
