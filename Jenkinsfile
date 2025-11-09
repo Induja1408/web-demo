@@ -26,52 +26,24 @@ pipeline {
       }
     }
 
-    stage('Install Node & Test') {
+   stage('Install Node & Test') {
   steps {
     script {
       def ws = pwd()
       sh """
         docker run --rm \
-          -v '${ws}:/ws' -w /ws \
+          -v '${ws}/web-demo:/ws' -w /ws \
           node:18-bullseye bash -lc '
             set -e
             corepack enable || true
-            npm --version
-
-            if [ -f package-lock.json ]; then
-              echo "Using npm ci (lockfile present)"
-              npm ci
-            else
-              echo "No package-lock.json, using npm install"
-              npm install
-            fi
-
-            # If jest exists, run it and emit JUnit + coverage
-            if npm ls --depth=0 jest >/dev/null 2>&1; then
-              mkdir -p reports
-              npx jest --coverage \
-                --reporters=default \
-                --reporters=jest-junit
-            else
-              echo "No tests configured; creating a dummy JUnit file so Jenkins stage passes."
-              mkdir -p reports
-              cat > reports/junit.xml <<EOF
-<testsuite name="dummy" tests="1" failures="0">
-  <testcase classname="dummy" name="no-tests"/>
-</testsuite>
-EOF
-            fi
+            npm install
+            npm test
           '
       """
     }
   }
-  post {
-    always {
-      junit 'reports/junit.xml'
-      archiveArtifacts artifacts: 'coverage/**', onlyIfSuccessful: false
-    }
-  }
 }
+
 
 
     stage('SonarQube Scan') {
