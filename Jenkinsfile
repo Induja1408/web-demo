@@ -9,7 +9,7 @@ pipeline {
     // === Nexus (Raw repo) ===
     NEXUS_URL   = 'http://34.227.80.56:8081'         // your Nexus VM URL
     NEXUS_REPO  = 'web-static'                       // create a "raw (hosted)" repo with this name
-    NEXUS_CREDS = credentials('nexus-user-pass')     // Jenkins Username/Password credentials
+    NEXUS_CREDS = credentials('nexus-deploy')     // Jenkins Username/Password credentials
   }
 
   options {
@@ -86,18 +86,8 @@ pipeline {
   }
 
   post {
-    success {
-      emailext subject: "Jenkins SUCCESS: ${env.JOB_NAME} #${env.BUILD_NUMBER}",
-               body: "Build succeeded. Artifact uploaded to Nexus.\n${env.BUILD_URL}",
-               to: 'you@example.com',
-               recipientProviders: [[$class: 'DevelopersRecipientProvider']]
-    }
-    failure {
-      emailext subject: "Jenkins FAILED: ${env.JOB_NAME} #${env.BUILD_NUMBER}",
-               body: "Build failed. See logs: ${env.BUILD_URL}",
-               to: 'you@example.com',
-               recipientProviders: [[$class: 'DevelopersRecipientProvider']]
+    always {
+      echo "Build finished: ${currentBuild.currentResult}"
     }
   }
 }
-
