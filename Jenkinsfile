@@ -32,7 +32,7 @@ pipeline {
       def ws = pwd()
       sh """
         docker run --rm \
-          -v '${ws}/web-demo:/ws' -w /ws \
+          -v '${ws}:/ws' -w /ws \
           node:18-bullseye bash -lc '
             set -e
             corepack enable || true
