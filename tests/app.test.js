@@ -1,4 +1,4 @@
-import { greet } from "../src/app";
+import { greet } from "../src/app.js";
 
 test("default greeting", () => {
   expect(greet()).toBe("Hello, world!");
