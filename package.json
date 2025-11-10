@@ -13,4 +13,10 @@
     "outputDirectory": "./reports",
     "outputName": "junit.xml"
   }
+  {
+  "scripts": {
+    "test": "jest",
+    "zip": "rm -f dist.zip && zip -r dist.zip . -x \"node_modules/*\" \".git/*\" \"coverage/*\""
+  }
 }
+
