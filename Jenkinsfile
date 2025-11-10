@@ -39,59 +39,66 @@ pipeline {
       }
     }
 
-    stage('Install Node & Test') {
-      steps {
-        script {
-          def ws = pwd() // /var/jenkins_home/workspace/CI-CD-Automation
-          def volPath = ws.replace('/var/jenkins_home','/jenkins_home') + (env.APP_DIR == '.' ? '' : "/${env.APP_DIR}")
-          sh """
-            docker run --rm \
-              -v jenkins_home:/jenkins_home -w '${volPath}' \
-              node:18-bullseye bash -lc '
-                set -e
-                corepack enable || true
-                if [ -f package-lock.json ]; then npm ci; else npm install; fi
-                npm test
-              '
-          """
-        }
-      }
+ stage('Install Node & Test') {
+  steps {
+    script {
+      def ws = pwd() // e.g. /var/jenkins_home/workspace/CI-CD-Automation
+      def workDir = (env.APP_DIR == '.' ? ws : "${ws}/${env.APP_DIR}")
+      sh """
+        docker run --rm \
+          --volumes-from jenkins \
+          -w '${workDir}' \
+          node:18-bullseye bash -lc '
+            set -e
+            corepack enable || true
+            if [ -f package-lock.json ]; then npm ci; else npm install; fi
+            npm test
+          '
+      """
     }
+  }
+}
 
-    stage('SonarQube Scan') {
-      steps {
-        script {
-          def ws = pwd()
-          def volPath = ws.replace('/var/jenkins_home','/jenkins_home') + (env.APP_DIR == '.' ? '' : "/${env.APP_DIR}")
-          sh """
-            docker run --rm \
-              -e SONAR_HOST_URL='${SONAR_HOST_URL}' \
-              -e SONAR_LOGIN='${SONARQUBE_CREDS}' \
-              -v jenkins_home:/jenkins_home -w '${volPath}' \
-              sonarsource/sonar-scanner-cli:latest
-          """
-        }
-      }
+
+stage('SonarQube Scan') {
+  steps {
+    script {
+      def ws = pwd()
+      def workDir = (env.APP_DIR == '.' ? ws : "${ws}/${env.APP_DIR}")
+      sh """
+        docker run --rm \
+          --volumes-from jenkins \
+          -w '${workDir}' \
+          -e SONAR_HOST_URL='${SONAR_HOST_URL}' \
+          -e SONAR_LOGIN='${SONARQUBE_CREDS}' \
+          sonarsource/sonar-scanner-cli:latest
+      """
     }
+  }
+}
+
 
     stage('Package (zip)') {
-      steps {
-        script {
-          def ws = pwd()
-          def jobRootVol = ws.replace('/var/jenkins_home','/jenkins_home')
-          def volPath = jobRootVol + (env.APP_DIR == '.' ? '' : "/${env.APP_DIR}")
-          sh """
-            docker run --rm -v jenkins_home:/jenkins_home -w '${volPath}' alpine sh -lc '
-              set -e
-              apk add --no-cache zip
-              rm -f "${jobRootVol}/dist.zip"
-              zip -r "${jobRootVol}/dist.zip" . -x "node_modules/*" ".git/*" "coverage/*"
-            '
-          """
-        }
-        archiveArtifacts artifacts: 'dist.zip', fingerprint: true
-      }
+  steps {
+    script {
+      def ws = pwd()
+      def workDir = (env.APP_DIR == '.' ? ws : "${ws}/${env.APP_DIR}")
+      sh """
+        docker run --rm \
+          --volumes-from jenkins \
+          -w '${workDir}' \
+          alpine sh -lc '
+            set -e
+            apk add --no-cache zip
+            rm -f "${ws}/dist.zip"
+            zip -r "${ws}/dist.zip" . -x "node_modules/*" ".git/*" "coverage/*"
+          '
+      """
     }
+    archiveArtifacts artifacts: 'dist.zip', fingerprint: true
+  }
+}
+
 
     stage('Publish to Nexus (raw)') {
       steps {
