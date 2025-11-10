@@ -2,6 +2,7 @@
   "name": "web-demo",
   "version": "1.0.0",
   "private": true,
+  "type": "module",
 
   "scripts": {
     "test": "jest --coverage --reporters=default --reporters=jest-junit",
@@ -18,3 +19,4 @@
     "outputName": "junit.xml"
   }
 }
+
