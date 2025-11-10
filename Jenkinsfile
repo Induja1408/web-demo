@@ -7,7 +7,7 @@ pipeline {
 
     NEXUS_URL   = 'http://34.227.80.56:8081'
     NEXUS_REPO  = 'web-static'
-    NEXUS_CREDS = credentials('nexus-deploy')
+    NEXUS_CREDS = credentials('nexus-deploy') // exposes NEXUS_CREDS_USR / NEXUS_CREDS_PSW
   }
 
   options {
@@ -26,15 +26,15 @@ pipeline {
               set -e
               if [ -f package.json ]; then echo .; exit 0; fi
               hits=$(find . -maxdepth 2 -mindepth 2 -name package.json -printf "%h\\n" | sed "s|^\\./||")
-              count=$(echo "$hits" | grep -c . || true)
-              if [ "$count" = "1" ]; then echo "$hits"; exit 0; fi
-              echo "ERROR: package.json not found and cannot uniquely detect a subfolder." >&2
+              cnt=$(echo "$hits" | grep -c . || true)
+              if [ "$cnt" = "1" ]; then echo "$hits"; exit 0; fi
+              echo "ERROR: package.json not found at repo root and cannot uniquely detect a subfolder." >&2
               echo "$hits" >&2
               exit 1
             ''',
             returnStdout: true
           ).trim()
-          echo "Using APP_DIR='${env.APP_DIR}'"
+          echo "APP_DIR='${env.APP_DIR}'"
         }
       }
     }
@@ -42,11 +42,11 @@ pipeline {
     stage('Install Node & Test') {
       steps {
         script {
-          // IMPORTANT: mount the named volume 'jenkins_home' and cd into the job workspace on that volume
-          def workdir = "/jenkins_home/workspace/${env.JOB_NAME}/${env.APP_DIR}"
+          def ws = pwd() // /var/jenkins_home/workspace/CI-CD-Automation
+          def volPath = ws.replace('/var/jenkins_home','/jenkins_home') + (env.APP_DIR == '.' ? '' : "/${env.APP_DIR}")
           sh """
             docker run --rm \
-              -v jenkins_home:/jenkins_home -w '${workdir}' \
+              -v jenkins_home:/jenkins_home -w '${volPath}' \
               node:18-bullseye bash -lc '
                 set -e
                 corepack enable || true
@@ -61,12 +61,13 @@ pipeline {
     stage('SonarQube Scan') {
       steps {
         script {
-          def workdir = "/jenkins_home/workspace/${env.JOB_NAME}/${env.APP_DIR}"
+          def ws = pwd()
+          def volPath = ws.replace('/var/jenkins_home','/jenkins_home') + (env.APP_DIR == '.' ? '' : "/${env.APP_DIR}")
           sh """
             docker run --rm \
               -e SONAR_HOST_URL='${SONAR_HOST_URL}' \
               -e SONAR_LOGIN='${SONARQUBE_CREDS}' \
-              -v jenkins_home:/jenkins_home -w '${workdir}' \
+              -v jenkins_home:/jenkins_home -w '${volPath}' \
               sonarsource/sonar-scanner-cli:latest
           """
         }
@@ -76,14 +77,15 @@ pipeline {
     stage('Package (zip)') {
       steps {
         script {
-          def jobRoot = "/jenkins_home/workspace/${env.JOB_NAME}"
-          def workdir = "${jobRoot}/${env.APP_DIR}"
+          def ws = pwd()
+          def jobRootVol = ws.replace('/var/jenkins_home','/jenkins_home')
+          def volPath = jobRootVol + (env.APP_DIR == '.' ? '' : "/${env.APP_DIR}")
           sh """
-            docker run --rm -v jenkins_home:/jenkins_home -w '${workdir}' alpine sh -lc '
+            docker run --rm -v jenkins_home:/jenkins_home -w '${volPath}' alpine sh -lc '
               set -e
               apk add --no-cache zip
-              rm -f "${jobRoot}/dist.zip"
-              zip -r "${jobRoot}/dist.zip" . -x "node_modules/*" ".git/*" "coverage/*"
+              rm -f "${jobRootVol}/dist.zip"
+              zip -r "${jobRootVol}/dist.zip" . -x "node_modules/*" ".git/*" "coverage/*"
             '
           """
         }
