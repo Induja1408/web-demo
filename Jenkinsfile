@@ -3,11 +3,11 @@ pipeline {
 
   environment {
     // === SonarQube ===
-    SONAR_HOST_URL = 'http://18.234.42.66:9000'      // your SonarQube VM URL
+    SONAR_HOST_URL = 'http://34.227.80.56:9000'      // your SonarQube VM URL
     SONARQUBE_CREDS = credentials('sonar-token')     // Jenkins secret text (token)
 
     // === Nexus (Raw repo) ===
-    NEXUS_URL   = 'http://18.234.42.66:8081'         // your Nexus VM URL
+    NEXUS_URL   = 'http://34.227.80.56:8081'         // your Nexus VM URL
     NEXUS_REPO  = 'web-static'                       // create a "raw (hosted)" repo with this name
     NEXUS_CREDS = credentials('nexus-user-pass')     // Jenkins Username/Password credentials
   }
