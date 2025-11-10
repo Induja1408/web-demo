@@ -62,20 +62,22 @@ pipeline {
 
 stage('SonarQube Scan') {
   steps {
-    script {
-      def ws = pwd()
-      def workDir = (env.APP_DIR == '.' ? ws : "${ws}/${env.APP_DIR}")
-      sh """
-        docker run --rm \
-          --volumes-from jenkins \
-          -w '${workDir}' \
-          -e SONAR_HOST_URL='${SONAR_HOST_URL}' \
-          -e SONAR_LOGIN='${SONARQUBE_CREDS}' \
-          sonarsource/sonar-scanner-cli:latest
-      """
+    withCredentials([string(credentialsId: 'sonar-token', variable: 'SONAR_TOKEN')]) {
+      script {
+        def ws = pwd()
+        sh """
+          docker run --rm \
+            --volumes-from jenkins \
+            -w '${ws}' \
+            -e SONAR_HOST_URL='${SONAR_HOST_URL}' \
+            -e SONAR_TOKEN="${SONAR_TOKEN}" \
+            sonarsource/sonar-scanner-cli:latest
+        """
+      }
     }
   }
 }
+
 
 
     stage('Package (zip)') {
