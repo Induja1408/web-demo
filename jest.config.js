@@ -1,5 +1,5 @@
-export default {
+module.exports = {
+  collectCoverage: true,
+  coverageDirectory: "coverage",
   testEnvironment: "node",
-  roots: ["<rootDir>/tests"],
-  transform: {}
 };
